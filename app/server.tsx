@@ -1,7 +1,7 @@
 'use server'
 
 import { GitHubGist } from "./types";
-const token = process.env.API_SECRET_TOKEN;
+const token = process.env.GITHUB_ACCESS_TOKEN;
 
 export async function createGist(content:string, contentLength: number) {
   try {

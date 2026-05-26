@@ -9,8 +9,10 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import Paper from '@mui/material/Paper';
-import { IconButton } from '@mui/material';
+import Snackbar, { SnackbarCloseReason } from '@mui/material/Snackbar';
+import IconButton from '@mui/material/IconButton'; 
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CloseIcon from '@mui/icons-material/Close';
 
 export default function AppMain({data}:{data:GitHubGist[]}) {
   const [selectedGist,setSelectedGist] = useState<string>('new');
@@ -173,6 +175,31 @@ async function copyToClipboard(text:string) {
 }
 
 function DisplayXIVPlanURL({url}:{url:string}){
+  const [open, setOpen] = useState(false);
+  const handleClick = () => {
+    setOpen(true);
+  };
+  const handleClose = (
+    event: React.SyntheticEvent | Event,
+    reason?: SnackbarCloseReason,
+  ) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setOpen(false);
+  };
+  const action = (
+    <>
+      <IconButton
+        size="small"
+        aria-label="close"
+        color="inherit"
+        onClick={handleClose}
+      >
+        <CloseIcon fontSize="small" />
+      </IconButton>
+    </>
+  );
   const formattedUrl = `https://xivplan.netlify.app/?url=${encodeURIComponent(url)}`
     return (
       <Box
@@ -193,9 +220,16 @@ function DisplayXIVPlanURL({url}:{url:string}){
         variant="filled"
         value={formattedUrl}
       />
-      <IconButton size='large' onClick={()=>{copyToClipboard(formattedUrl)}}>
+      <IconButton size='large' onClick={()=>{handleClick(); copyToClipboard(formattedUrl)}}>
         <ContentCopyIcon/>
       </IconButton>
+      <Snackbar
+        open={open}
+        autoHideDuration={6000}
+        onClose={handleClose}
+        message="XIVPlan URL saved!"
+        action={action}
+      />
       </Box>
     )
 }
@@ -242,8 +276,12 @@ function DisplayedGists({data, selected, handleCardClick, newGistName, setNewGis
   }  
   return (    
         <div style={{
+            width: '100vw',
             display: 'flex',
-            flexDirection: 'row'
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            alignItems: 'center',
         }}>
           <Card
             key='newGistCreationCard'
