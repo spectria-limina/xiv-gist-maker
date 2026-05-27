@@ -14,12 +14,14 @@ import IconButton from '@mui/material/IconButton';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CloseIcon from '@mui/icons-material/Close';
 
+const defaultName = 'Kefka Phase N';
+
 export default function AppMain({data}:{data:GitHubGist[]}) {
   const [selectedGist,setSelectedGist] = useState<string>('new');
   const [sharelink,setSharelink] = useState('');
   const [isError,setIsError] = useState(false);
   const [submitButtonActive,setSubmitButtonActive] = useState(false);
-  const [newGistName,setNewGistName] = useState('XIVPlan JSON');
+  const [newGistName,setNewGistName] = useState(defaultName);
   const [displayedXIVPlanUrl,setDisplayedXIVPlanUrl] = useState('');
   const [recentlyCreatedXIVPlanUrl, setRecentlyCreatedXIVPlanUrl] = useState('');
   const [snackbarActive, setSnackbarActive] = useState(false);
@@ -221,9 +223,8 @@ function DisplayXIVPlanUrl({url, clickHandler}:{url:string, clickHandler:()=>voi
     )
 }
 
-function DisplayGists({data, selected, handleCardClick, newGistName, setNewGistName}:{data:GitHubGist[], selected:string|null, handleCardClick: (event: any,id: any)=>void, newGistName:string, setNewGistName:Dispatch<SetStateAction<string>>}) {
-  const defaultName = "Phase N Plan";
-  
+function DisplayGists({data, selected, handleCardClick, newGistName, setNewGistName}:
+  {data:GitHubGist[], selected:string|null, handleCardClick: (event: any,id: any)=>void, newGistName:string, setNewGistName:Dispatch<SetStateAction<string>>}) {
   const handleUpdate = (event: { target: { value: SetStateAction<string>; }; }) => {
     setNewGistName(event.target.value)
   }
