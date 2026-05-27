@@ -58,3 +58,21 @@ export async function updateGist(id: string, content:string, contentLength: numb
     return { success: false, message: (error as Error).message };
   }
 }
+
+export async function fetchUserGists(): Promise<GitHubGist[]> {
+  
+  const response = await fetch('https://api.github.com/gists', {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2026-03-10',
+    },
+    next: { revalidate: 10 },
+  });
+
+  if (!response.ok) {
+    throw new Error('Auth Failure');
+  }
+  const data:GitHubGist[] = await response.json();
+  return data;
+}

@@ -18,22 +18,24 @@ export default function AppMain({data}:{data:GitHubGist[]}) {
   const [selectedGist,setSelectedGist] = useState<string>('new');
   const [sharelink,setSharelink] = useState('');
   const [isError,setIsError] = useState(false);
-  const [buttonActive,setButtonActive] = useState(false);
+  const [submitButtonActive,setSubmitButtonActive] = useState(false);
   const [newGistName,setNewGistName] = useState('XIVPlan JSON');
-  const [createdGistURL,setCreatedGistURL] = useState('');
+  const [displayedXIVPlanUrl,setDisplayedXIVPlanUrl] = useState('');
+  const [recentlyCreatedXIVPlanUrl, setRecentlyCreatedXIVPlanUrl] = useState('');
+  const [snackbarActive, setSnackbarActive] = useState(false);
   const handleSubmit = async () => {
     if(selectedGist === 'new') {
-      const submittedJSON = JSON.stringify(parseJSONfromURL(sharelink));
+      const submittedJSON = JSON.stringify(parseJSONfromUrl(sharelink));
       const postContent = JSON.stringify(new PostBody(newGistName, submittedJSON));
       const postContentLength = postContent.length;
       const result = await createGist(postContent, postContentLength);
       if (result.success) {
         if (result.data) {
-          console.log(result.data);
-          const regex = /([^\/]+)\/[^\/]+(\/[^\/]+)$/;
-          const rawURL = result.data.files['XIVPlan.json'].raw_url;
-          const fixedURL = rawURL.replace(regex, '$1$2');
-          setCreatedGistURL(fixedURL);
+          const newUrl = parseGistUrl(result.data)
+          setDisplayedXIVPlanUrl(newUrl);
+          setRecentlyCreatedXIVPlanUrl(newUrl);
+          copyToClipboard(constructXIVPlanSharelink(newUrl));
+          setSnackbarActive(true);
           setSharelink('');
         }
       } else {
@@ -41,19 +43,19 @@ export default function AppMain({data}:{data:GitHubGist[]}) {
         setSharelink('');
       }
     } else if (selectedGist !== 'new') {
-      const submittedJSON = JSON.stringify(parseJSONfromURL(sharelink));
-      const selectedObj = data.filter(gist => gist.id === selectedGist )[0];
+      const submittedJSON = JSON.stringify(parseJSONfromUrl(sharelink));
+      const selectedObj = data.filter(gist => gist.id === selectedGist)[0];
       if(selectedObj.description) {
         const postContent = JSON.stringify(new PostBody(selectedObj.description, submittedJSON));
         const postContentLength = postContent.length;
         const result = await updateGist(selectedGist, postContent, postContentLength);
         if (result.success) {
           if (result.data) {
-            console.log(result.data);
-            const regex = /([^\/]+)\/[^\/]+(\/[^\/]+)$/;
-            const rawURL = result.data.files['XIVPlan.json'].raw_url;
-            const fixedURL = rawURL.replace(regex, '$1$2');
-            setCreatedGistURL(fixedURL);
+            const newUrl = parseGistUrl(result.data)
+            setDisplayedXIVPlanUrl(newUrl);
+            setRecentlyCreatedXIVPlanUrl(newUrl);
+            copyToClipboard(constructXIVPlanSharelink(newUrl));
+            setSnackbarActive(true);
             setSharelink('');
           }
         } else {
@@ -67,25 +69,61 @@ export default function AppMain({data}:{data:GitHubGist[]}) {
   const handleCardClick = (event: React.MouseEvent, id: string) => {
     if (event.detail > 0) {
       setSelectedGist(id);
+      if (id === 'new') {
+        setDisplayedXIVPlanUrl(recentlyCreatedXIVPlanUrl);
+      } else {
+        const selectedGistUrl = parseGistUrl(data.filter(gist => gist.id === id)[0])
+        setDisplayedXIVPlanUrl(selectedGistUrl);
+      }
+      
     }
   };
-  const handleKeyDown = (event: { key: string; preventDefault: () => void; }) => {
+  const handleCopyClick = () => {
+    copyToClipboard(constructXIVPlanSharelink(displayedXIVPlanUrl));
+    setSnackbarActive(true);
+  };
+  const handleSnackbarClose = (event: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
+    if (reason !== 'clickaway') {
+      setSnackbarActive(false);  
+    }
+  };
+  const handleEnterPress = (event: { key: string; preventDefault: () => void; }) => {
       if (event.key === 'Enter') {
         event.preventDefault();
         handleValidation();
       }
     };
-    const handleValidation = () => {
+  const handleValidation = () => {
       const isValid = validateInput(sharelink)
       setIsError(!isValid);
       if(sharelink==='') {
-        setButtonActive(false);
+        setSubmitButtonActive(false);
       } else {
-        setButtonActive(isValid);
+        setSubmitButtonActive(isValid);
       }
-    }
+    };
+  const snackbarAction = (
+    <>
+      <IconButton
+        size="small"
+        aria-label="close"
+        color="inherit"
+        onClick={handleSnackbarClose}
+      >
+        <CloseIcon fontSize="small" />
+      </IconButton>
+    </>
+  );
+  /* ---------------------------------------- DISPLAY BELOW ---------------------------------------- */
   return (
     <>
+    <Snackbar
+        open={snackbarActive}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        message="XIVPlan Url saved!"
+        action={snackbarAction}
+      />
     <Paper
         elevation={3}
         sx={{
@@ -110,20 +148,16 @@ export default function AppMain({data}:{data:GitHubGist[]}) {
           boxSizing: 'border-box'
         }}
       >
-        <ValidatedInput sharelink={sharelink} isError={isError} setSharelink={setSharelink} handleValidation={handleValidation} handleKeyDown={handleKeyDown} buttonActive={buttonActive} selected={selectedGist} clickHandler={handleSubmit}/>
-        {createdGistURL?
-          <DisplayXIVPlanURL url={createdGistURL}/>
-        :
-          <></>
-        }
+        <SharelinkInput sharelink={sharelink} isError={isError} setSharelink={setSharelink} handleValidation={handleValidation} handleKeyDown={handleEnterPress} submitButtonActive={submitButtonActive} selected={selectedGist} clickHandler={handleSubmit}/>
+        <DisplayXIVPlanUrl url={displayedXIVPlanUrl} clickHandler={handleCopyClick}/>
     </Paper>
-    <DisplayedGists data={data} selected={selectedGist} handleCardClick={handleCardClick} newGistName={newGistName} setNewGistName={setNewGistName}/>
+    <DisplayGists data={data} selected={selectedGist} handleCardClick={handleCardClick} newGistName={newGistName} setNewGistName={setNewGistName}/>
     </>
   )
 }
 
-function ValidatedInput({sharelink, isError, setSharelink, handleValidation, handleKeyDown, buttonActive, selected, clickHandler}:
-    {sharelink:string, isError:boolean, setSharelink:any, handleValidation:any, handleKeyDown:any, buttonActive:boolean, selected: string, clickHandler:()=>Promise<void>}) {
+function SharelinkInput({sharelink, isError, setSharelink, handleValidation, handleKeyDown, submitButtonActive, selected, clickHandler}:
+    {sharelink:string, isError:boolean, setSharelink:any, handleValidation:any, handleKeyDown:any, submitButtonActive:boolean, selected: string, clickHandler:()=>Promise<void>}) {
   return (
     <>
     <Box
@@ -143,64 +177,23 @@ function ValidatedInput({sharelink, isError, setSharelink, handleValidation, han
           variant='outlined'
           onChange={(e) => setSharelink(e.target.value)}
           onBlur={()=>{handleValidation()}}
-          onKeyDown={handleKeyDown}          
+          onKeyDown={handleKeyDown}
         />
       </div>
     </Box>
-    <GenerateButton state={buttonActive} selected={selected} clickHandler={clickHandler}/>
-    </>
-  );
-}
-
-function GenerateButton({state,selected,clickHandler}:{state: boolean, selected:string, clickHandler:()=>Promise<void>}) {
-    return (
-      <Button
-        sx={{ '& .MuiTextField-root': { m: 1, width: '50ch' } }}
-        disabled = {!state}
+    <Button
+        disabled = {!submitButtonActive}
         variant="contained"
         onClick={clickHandler}
       >
         {selected==='new'?'Create New':'Update Gist'}
       </Button>
-    )
-}
-
-async function copyToClipboard(text:string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    console.log('Text copied to clipboard');
-  } catch (err) {
-    console.error('Failed to copy text: ', err);
-  }
-}
-
-function DisplayXIVPlanURL({url}:{url:string}){
-  const [open, setOpen] = useState(false);
-  const handleClick = () => {
-    setOpen(true);
-  };
-  const handleClose = (
-    event: React.SyntheticEvent | Event,
-    reason?: SnackbarCloseReason,
-  ) => {
-    if (reason === 'clickaway') {
-      return;
-    }
-    setOpen(false);
-  };
-  const action = (
-    <>
-      <IconButton
-        size="small"
-        aria-label="close"
-        color="inherit"
-        onClick={handleClose}
-      >
-        <CloseIcon fontSize="small" />
-      </IconButton>
     </>
   );
-  const formattedUrl = `https://xivplan.netlify.app/?url=${encodeURIComponent(url)}`
+}
+
+function DisplayXIVPlanUrl({url, clickHandler}:{url:string, clickHandler:()=>void}){
+  const formattedUrl = constructXIVPlanSharelink(url);
     return (
       <Box
       sx={{
@@ -208,65 +201,28 @@ function DisplayXIVPlanURL({url}:{url:string}){
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        padding: 1,
       }}>
       <TextField
         sx= {{
-          width: '50ch',
-          padding: 1,
-          margin: 1,
-        }} 
+          width: '45ch',
+        }}
+        aria-readonly
         id="XIVPlan-formatted-url"
-        variant="filled"
+        placeholder="Formatted XIVPlan Link"
+        variant="standard"
         value={formattedUrl}
-      />
-      <IconButton size='large' onClick={()=>{handleClick(); copyToClipboard(formattedUrl)}}>
+      ></TextField>
+      <IconButton size='large' onClick={clickHandler}>
         <ContentCopyIcon/>
       </IconButton>
-      <Snackbar
-        open={open}
-        autoHideDuration={6000}
-        onClose={handleClose}
-        message="XIVPlan URL saved!"
-        action={action}
-      />
       </Box>
     )
 }
 
-function validateInput(input:string) {
-    const regex = /^https:\/\/xivplan.netlify.app\/#\/plan\/[a-zA-Z0-9-_]*$/m;
-    if (input === '') {
-        //don't throw errors when empty
-        return true;
-    }
-    if (!regex.test(input)) {
-        return false;
-    }
-    try {
-        parseJSONfromURL(input);
-    }
-    catch {
-        return false;
-    }
-    return true;
-}
-
-function parseJSONfromURL(url:string) {
-    const searchTarget = '/plan/';
-    const fixedInput = url.replaceAll('-', '+')
-                            .replaceAll('_','/')
-                            .substring(url.indexOf(searchTarget)+searchTarget.length)
-    const binData = atob(fixedInput);
-    const charData = binData.split('').map(function (x) { return x.charCodeAt(0); });
-    const zlibData = new Uint8Array(charData);
-    const data = inflate(zlibData);
-    //@ts-expect-error this shit is so weird????
-    return JSON.parse(String.fromCharCode.apply(null, new Uint16Array(data)));
-}
-
-function DisplayedGists({data, selected, handleCardClick, newGistName, setNewGistName}:{data:GitHubGist[], selected:string|null, handleCardClick: (event: any,id: any)=>void, newGistName:string, setNewGistName:Dispatch<SetStateAction<string>>}) {
-  const defaultName = "XIVPlan JSON";
+function DisplayGists({data, selected, handleCardClick, newGistName, setNewGistName}:{data:GitHubGist[], selected:string|null, handleCardClick: (event: any,id: any)=>void, newGistName:string, setNewGistName:Dispatch<SetStateAction<string>>}) {
+  const defaultName = "Phase N Plan";
   
   const handleUpdate = (event: { target: { value: SetStateAction<string>; }; }) => {
     setNewGistName(event.target.value)
@@ -309,7 +265,7 @@ function DisplayedGists({data, selected, handleCardClick, newGistName, setNewGis
             <TextField
                 required
                 id="new-gist-name"
-                label="Input Name"
+                label="New Gist Name"
                 placeholder="Be Descriptive!"
                 variant="standard"
                 value={newGistName}
@@ -362,4 +318,54 @@ function DisplayedGists({data, selected, handleCardClick, newGistName, setNewGis
         </Card>;})}
         </div>
     );
+}
+
+async function copyToClipboard(text:string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    console.log('Text copied to clipboard');
+  } catch (err) {
+    console.error('Failed to copy text: ', err);
+  }
+}
+
+function validateInput(input:string) {
+    const regex = /[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\/#\/plan\/[a-zA-Z0-9-_]*$/m;
+    if (input === '') {
+        return true;
+    }
+    if (!regex.test(input)) {
+        return false;
+    }
+    try {
+        parseJSONfromUrl(input);
+    }
+    catch {
+        return false;
+    }
+    return true;
+}
+
+function parseJSONfromUrl(url:string) {
+    const searchTarget = '/plan/';
+    const fixedInput = url.replaceAll('-', '+')
+                            .replaceAll('_','/')
+                            .substring(url.indexOf(searchTarget)+searchTarget.length)
+    const binData = atob(fixedInput);
+    const charData = binData.split('').map(function (x) { return x.charCodeAt(0); });
+    const zlibData = new Uint8Array(charData);
+    const data = inflate(zlibData);
+    //@ts-expect-error this shit is so weird????
+    return JSON.parse(String.fromCharCode.apply(null, new Uint16Array(data)));
+}
+
+function parseGistUrl(input:GitHubGist) {
+    const regex = /([^\/]+)\/[^\/]+(\/[^\/]+)$/;
+    const rawUrl = input.files['XIVPlan.json'].raw_url;
+    const fixedUrl = rawUrl.replace(regex, '$1$2');
+    return fixedUrl;
+}
+
+function constructXIVPlanSharelink(url:string) {
+    return url ? `https://xivplan.netlify.app/?url=${encodeURIComponent(url)}`:'';
 }
