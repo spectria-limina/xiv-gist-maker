@@ -332,8 +332,8 @@ function DisplayXIVPlanUrls({
       }}
     >
       {[
-        { label: "Updateable Link", value: formattedStable, url: stableUrl },
-        { label: "Permalink", value: formattedPermalink, url: permalinkUrl },
+        { label: "Stable Link to Latest Version", value: formattedStable, url: stableUrl },
+        { label: "Permalink to Current Version", value: formattedPermalink, url: permalinkUrl },
       ].map(({ label, value, url }) => (
         <Box
           key={label}
