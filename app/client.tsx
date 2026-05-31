@@ -74,7 +74,7 @@ export default function AppMain({
   const router = useRouter();
   const [gists, setGists] = useState<GitHubGist[]>([]);
   const [gistsLoading, setGistsLoading] = useState(false);
-  const [gistsError, setGistsError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [selectedGist, setSelectedGist] = useState<string>("new");
   const [sharelink, setSharelink] = useState("");
   const [isError, setIsError] = useState(false);
@@ -87,12 +87,12 @@ export default function AppMain({
 
   const loadGists = useCallback(async () => {
     setGistsLoading(true);
-    setGistsError(null);
+    setError(null);
     try {
       const data = await fetchUserGists();
       setGists(data);
     } catch {
-      setGistsError("Failed to load gists. Your session may have expired.");
+      setError("Failed to load gists. Your session may have expired.");
       router.refresh();
     } finally {
       setGistsLoading(false);
@@ -125,6 +125,7 @@ export default function AppMain({
     }
 
     if (result.success && result.data) {
+      setError(null);
       const newUrl = parseGistUrl(result.data);
       setDisplayedXIVPlanUrl(newUrl);
       setRecentlyCreatedXIVPlanUrl(newUrl);
@@ -133,8 +134,7 @@ export default function AppMain({
       setSharelink("");
       loadGists();
     } else {
-      setIsError(true);
-      setSharelink("");
+      setError(result.message ?? "Failed to save gist.");
     }
   };
 
@@ -244,9 +244,9 @@ export default function AppMain({
           clickHandler={handleCopyClick}
         />
       </Paper>
-      {gistsError && (
+      {error && (
         <Typography color="error" sx={{ textAlign: "center", mb: 2 }}>
-          {gistsError}
+          {error}
         </Typography>
       )}
       {gistsLoading ? (
