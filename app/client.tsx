@@ -130,11 +130,11 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
       ) : (
         <Paper elevation={3} sx={{ padding: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, maxWidth: 400 }}>
           <Typography variant="h6">Authorize on GitHub</Typography>
-          <Typography variant="body2" color="text.secondary" textAlign="center">
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
             Enter this code at <strong>{deviceData.verification_uri}</strong> (opened in new tab):
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h4" fontFamily="monospace" letterSpacing={4}>
+            <Typography variant="h4" sx={{ fontFamily: 'monospace', letterSpacing: 4 }}>
               {deviceData.user_code}
             </Typography>
             <IconButton onClick={copyCode} size="small" title="Copy code">
@@ -327,7 +327,7 @@ export default function AppMain({ isAuthenticated }: { isAuthenticated: boolean 
         <DisplayXIVPlanUrl url={displayedXIVPlanUrl} clickHandler={handleCopyClick} />
       </Paper>
       {gistsError && (
-        <Typography color="error" textAlign="center" sx={{ mb: 2 }}>{gistsError}</Typography>
+        <Typography color="error" sx={{ textAlign: 'center', mb: 2 }}>{gistsError}</Typography>
       )}
       {gistsLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', padding: 4 }}>
