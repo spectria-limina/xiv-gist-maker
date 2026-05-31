@@ -1,11 +1,5 @@
 "use client";
-import {
-  Dispatch,
-  SetStateAction,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { inflate } from "pako";
 import { GitHubGist } from "./types";
@@ -109,13 +103,13 @@ export default function AppMain({
   };
 
   const handleSubmit = async () => {
-    const planJson = JSON.stringify(parseJSONfromUrl(new URL(sharelink)));
+    const planJson = JSON.stringify(parseJSONfromUrl(new URL(sharelink)), null, 2);
 
     let result;
     if (selectedGist === "new") {
       result = await createGist(newGistName, planJson);
     } else {
-      const selectedObj = gists.find((g: GitHubGist) => g.id === selectedGist);
+      const selectedObj = gists.find((g) => g.id === selectedGist);
       if (!selectedObj?.description) return;
       result = await updateGist(
         selectedGist,
@@ -144,7 +138,7 @@ export default function AppMain({
       if (id === "new") {
         setDisplayedXIVPlanUrl(recentlyCreatedXIVPlanUrl);
       } else {
-        const gist = gists.find((g: GitHubGist) => g.id === id);
+        const gist = gists.find((g) => g.id === id);
         if (gist && "XIVPlan.json" in gist.files) {
           setDisplayedXIVPlanUrl(parseGistUrl(gist));
         }
@@ -164,10 +158,7 @@ export default function AppMain({
     if (reason !== "clickaway") setSnackbarActive(false);
   };
 
-  const handleEnterPress = (event: {
-    key: string;
-    preventDefault: () => void;
-  }) => {
+  const handleEnterPress = (event: React.KeyboardEvent) => {
     if (event.key === "Enter") {
       event.preventDefault();
     }
@@ -219,7 +210,7 @@ export default function AppMain({
         sx={{
           width: { xs: "100vw", sm: "80vw" },
           minWidth: { xs: "auto", sm: "600px" },
-          height: { xs: "20vh", sm: "20vh" },
+          height: "20vh",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
@@ -277,7 +268,7 @@ function SharelinkInput({
   sharelink: string;
   isError: boolean;
   handleChange: (value: string) => void;
-  handleKeyDown: (e: any) => void;
+  handleKeyDown: (e: React.KeyboardEvent) => void;
   submitButtonActive: boolean;
   selected: string;
   clickHandler: () => Promise<void>;
@@ -290,21 +281,19 @@ function SharelinkInput({
         noValidate
         autoComplete="off"
       >
-        <div>
-          <TextField
-            label="XIVPlan Share Link"
-            value={sharelink}
-            error={isError}
-            id="xivplan-input-textarea"
-            placeholder="Paste link here"
-            helperText={
-              isError ? "Not an XIVPlan share link or malformed link" : ""
-            }
-            variant="outlined"
-            onChange={(e) => handleChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-        </div>
+        <TextField
+          label="XIVPlan Share Link"
+          value={sharelink}
+          error={isError}
+          id="xivplan-input-textarea"
+          placeholder="Paste link here"
+          helperText={
+            isError ? "Not an XIVPlan share link or malformed link" : ""
+          }
+          variant="outlined"
+          onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
       </Box>
       <Button
         disabled={!submitButtonActive}
@@ -352,6 +341,14 @@ function DisplayXIVPlanUrl({
   );
 }
 
+const dateFormatOptions: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+};
+
 function cardSx(isSelected: boolean) {
   return {
     display: "flex",
@@ -380,13 +377,11 @@ function DisplayGists({
 }: {
   data: GitHubGist[];
   selected: string | null;
-  handleCardClick: (event: any, id: any) => void;
+  handleCardClick: (event: React.MouseEvent, id: string) => void;
   newGistName: string;
-  setNewGistName: Dispatch<SetStateAction<string>>;
+  setNewGistName: (value: string) => void;
 }) {
-  const handleUpdate = (event: {
-    target: { value: SetStateAction<string> };
-  }) => {
+  const handleUpdate = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNewGistName(event.target.value);
   };
   const handleResetToDefault = () => setNewGistName(defaultName);
@@ -420,7 +415,8 @@ function DisplayGists({
           onChange={handleUpdate}
         />
         <Button
-          sx={{ margin: "auto", padding: 1, size: "small" }}
+          size="small"
+          sx={{ margin: "auto", padding: 1 }}
           onClick={handleResetToDefault}
         >
           Default Name
@@ -439,23 +435,11 @@ function DisplayGists({
             </Typography>
             <Typography variant="body2" gutterBottom>
               <strong>Created On: </strong>
-              {new Date(jsonData.created_at).toLocaleString(undefined, {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {new Date(jsonData.created_at).toLocaleString(undefined, dateFormatOptions)}
             </Typography>
             <Typography variant="body2" gutterBottom>
               <strong>Last Updated: </strong>
-              {new Date(jsonData.updated_at).toLocaleString(undefined, {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {new Date(jsonData.updated_at).toLocaleString(undefined, dateFormatOptions)}
             </Typography>
             <Typography
               variant="caption"
@@ -465,7 +449,7 @@ function DisplayGists({
                 textOverflow: "ellipsis",
               }}
             >
-              <a href={jsonData.html_url} target="_blank">
+              <a href={jsonData.html_url} target="_blank" rel="noreferrer">
                 Click to view Gist online
               </a>
             </Typography>
@@ -502,7 +486,7 @@ function validateInput(input: string) {
   return true;
 }
 
-function parseJSONfromUrl(input: URL): JSON {
+function parseJSONfromUrl(input: URL): unknown {
   const encoded = input.hash.substring("#/plan/".length);
   const zlibData = Uint8Array.fromBase64(encoded, { alphabet: "base64url" });
   const inflated = inflate(zlibData);
