@@ -75,8 +75,7 @@ export default function AppMain({
   const [submitButtonActive, setSubmitButtonActive] = useState(false);
   const [newGistName, setNewGistName] = useState(defaultName);
   const [displayedXIVPlanUrl, setDisplayedXIVPlanUrl] = useState<URL | null>(null);
-  const [recentlyCreatedXIVPlanUrl, setRecentlyCreatedXIVPlanUrl] =
-    useState<URL | null>(null);
+  const [displayedPermalinkUrl, setDisplayedPermalinkUrl] = useState<URL | null>(null);
   const [snackbarActive, setSnackbarActive] = useState(false);
 
   const loadGists = useCallback(async () => {
@@ -120,10 +119,11 @@ export default function AppMain({
 
     if (result.success && result.data) {
       setError(null);
-      const newUrl = parseGistUrl(result.data);
-      setDisplayedXIVPlanUrl(newUrl);
-      setRecentlyCreatedXIVPlanUrl(newUrl);
-      copyToClipboard(constructXIVPlanSharelink(newUrl));
+      const stableUrl = parseGistUrl(result.data);
+      const permalinkUrl = new URL(result.data.files["XIVPlan.json"].raw_url);
+      setDisplayedXIVPlanUrl(stableUrl);
+      setDisplayedPermalinkUrl(permalinkUrl);
+      copyToClipboard(constructXIVPlanSharelink(stableUrl));
       setSnackbarActive(true);
       setSharelink("");
       loadGists();
@@ -136,18 +136,20 @@ export default function AppMain({
     if (event.detail > 0) {
       setSelectedGist(id);
       if (id === "new") {
-        setDisplayedXIVPlanUrl(recentlyCreatedXIVPlanUrl);
+        setDisplayedXIVPlanUrl(null);
+        setDisplayedPermalinkUrl(null);
       } else {
         const gist = gists.find((g) => g.id === id);
         if (gist && "XIVPlan.json" in gist.files) {
           setDisplayedXIVPlanUrl(parseGistUrl(gist));
+          setDisplayedPermalinkUrl(new URL(gist.files["XIVPlan.json"].raw_url));
         }
       }
     }
   };
 
-  const handleCopyClick = () => {
-    copyToClipboard(constructXIVPlanSharelink(displayedXIVPlanUrl));
+  const handleCopyClick = (url: URL | null) => {
+    copyToClipboard(constructXIVPlanSharelink(url));
     setSnackbarActive(true);
   };
 
@@ -210,7 +212,6 @@ export default function AppMain({
         sx={{
           width: { xs: "100vw", sm: "80vw" },
           minWidth: { xs: "auto", sm: "600px" },
-          height: "20vh",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
@@ -229,9 +230,10 @@ export default function AppMain({
           selected={selectedGist}
           clickHandler={handleSubmit}
         />
-        <DisplayXIVPlanUrl
-          url={displayedXIVPlanUrl}
-          clickHandler={handleCopyClick}
+        <DisplayXIVPlanUrls
+          stableUrl={displayedXIVPlanUrl}
+          permalinkUrl={displayedPermalinkUrl}
+          onCopy={handleCopyClick}
         />
       </Paper>
       {error && (
@@ -307,36 +309,49 @@ function SharelinkInput({
   );
 }
 
-function DisplayXIVPlanUrl({
-  url,
-  clickHandler,
+function DisplayXIVPlanUrls({
+  stableUrl,
+  permalinkUrl,
+  onCopy,
 }: {
-  url: URL | null;
-  clickHandler: () => void;
+  stableUrl: URL | null;
+  permalinkUrl: URL | null;
+  onCopy: (url: URL | null) => void;
 }) {
-  const formattedUrl = constructXIVPlanSharelink(url);
+  const formattedStable = constructXIVPlanSharelink(stableUrl);
+  const formattedPermalink = constructXIVPlanSharelink(permalinkUrl);
   return (
     <Box
       sx={{
         display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center",
+        flexDirection: "column",
+        gap: 1,
+        width: "60%",
         boxSizing: "border-box",
-        padding: 1,
+        pt: 1,
       }}
     >
-      <TextField
-        sx={{ width: "45ch" }}
-        aria-readonly
-        id="XIVPlan-formatted-url"
-        placeholder="Formatted XIVPlan Link"
-        variant="standard"
-        value={formattedUrl}
-      />
-      <IconButton size="large" onClick={clickHandler}>
-        <ContentCopyIcon />
-      </IconButton>
+      {[
+        { label: "Updateable Link", value: formattedStable, url: stableUrl },
+        { label: "Permalink", value: formattedPermalink, url: permalinkUrl },
+      ].map(({ label, value, url }) => (
+        <Box
+          key={label}
+          sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 1 }}
+        >
+          <TextField
+            sx={{ flex: 1 }}
+            slotProps={{ htmlInput: { readOnly: true } }}
+            label={label}
+            variant="outlined"
+            size="small"
+            value={value}
+          />
+          <IconButton size="medium" onClick={() => onCopy(url)}>
+            <ContentCopyIcon />
+          </IconButton>
+        </Box>
+      ))}
     </Box>
   );
 }
