@@ -18,84 +18,9 @@ import CircularProgress from '@mui/material/CircularProgress';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import LogoutIcon from '@mui/icons-material/Logout';
 
-const defaultName = 'Kefka Phase N';
+/* ---- Login component ---- */
 
-/* ---- Device Flow login component ---- */
-
-interface DeviceCodeResponse {
-  device_code: string;
-  user_code: string;
-  verification_uri: string;
-  expires_in: number;
-  interval: number;
-}
-
-function LoginScreen({ onLogin }: { onLogin: () => void }) {
-  const [deviceData, setDeviceData] = useState<DeviceCodeResponse | null>(null);
-  const [isPolling, setIsPolling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [codeCopied, setCodeCopied] = useState(false);
-
-  const startLogin = async () => {
-    setError(null);
-    const res = await fetch('/api/github/device/code', { method: 'POST' });
-    if (!res.ok) {
-      setError('Failed to start login. Is the app configured?');
-      return;
-    }
-    const data: DeviceCodeResponse = await res.json();
-    setDeviceData(data);
-    setIsPolling(true);
-    window.open(data.verification_uri, '_blank');
-  };
-
-  const copyCode = async () => {
-    if (!deviceData) return;
-    await navigator.clipboard.writeText(deviceData.user_code);
-    setCodeCopied(true);
-    setTimeout(() => setCodeCopied(false), 2000);
-  };
-
-  useEffect(() => {
-    if (!isPolling || !deviceData) return;
-
-    let active = true;
-    const intervalMs = (deviceData.interval + 1) * 1000;
-
-    const poll = async () => {
-      while (active) {
-        await new Promise(r => setTimeout(r, intervalMs));
-        if (!active) break;
-        const res = await fetch('/api/github/device/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ device_code: deviceData.device_code }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          onLogin();
-          active = false;
-        } else if (data.error === 'authorization_pending') {
-          // keep polling
-        } else if (data.error === 'slow_down') {
-          await new Promise(r => setTimeout(r, 5000));
-        } else if (data.error === 'expired_token') {
-          setError('Login session expired. Please try again.');
-          setDeviceData(null);
-          active = false;
-        } else {
-          setError(data.error_description || 'Login failed. Please try again.');
-          setDeviceData(null);
-          active = false;
-        }
-      }
-      setIsPolling(false);
-    };
-
-    poll();
-    return () => { active = false; };
-  }, [isPolling, deviceData, onLogin]);
-
+function LoginScreen({ error }: { error?: string }) {
   return (
     <Box
       sx={{
@@ -112,53 +37,21 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
       <Typography variant="body1" color="text.secondary">
         Sign in with GitHub to manage your gists.
       </Typography>
-
-      {!deviceData ? (
-        <>
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<GitHubIcon />}
-            onClick={startLogin}
-          >
-            Sign in with GitHub
-          </Button>
-          {error && (
-            <Typography color="error" variant="body2">{error}</Typography>
-          )}
-        </>
-      ) : (
-        <Paper elevation={3} sx={{ padding: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, maxWidth: 400 }}>
-          <Typography variant="h6">Authorize on GitHub</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-            Enter this code at <strong>{deviceData.verification_uri}</strong> (opened in new tab):
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h4" sx={{ fontFamily: 'monospace', letterSpacing: 4 }}>
-              {deviceData.user_code}
-            </Typography>
-            <IconButton onClick={copyCode} size="small" title="Copy code">
-              <ContentCopyIcon />
-            </IconButton>
-          </Box>
-          {codeCopied && <Typography variant="caption" color="success.main">Copied!</Typography>}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CircularProgress size={20} />
-            <Typography variant="body2" color="text.secondary">Waiting for authorization…</Typography>
-          </Box>
-          <Button variant="text" size="small" onClick={() => window.open(deviceData.verification_uri, '_blank')}>
-            Reopen GitHub
-          </Button>
-          {error && <Typography color="error" variant="body2">{error}</Typography>}
-        </Paper>
+      <Button variant="contained" size="large" startIcon={<GitHubIcon />} href="/api/auth/login">
+        Sign in with GitHub
+      </Button>
+      {error && (
+        <Typography color="error" variant="body2">Sign-in failed: {error}</Typography>
       )}
     </Box>
   );
 }
 
+const defaultName = 'Kefka Phase N';
+
 /* ---- Main app ---- */
 
-export default function AppMain({ isAuthenticated }: { isAuthenticated: boolean }) {
+export default function AppMain({ isAuthenticated, loginError }: { isAuthenticated: boolean; loginError?: string }) {
   const router = useRouter();
   const [gists, setGists] = useState<GitHubGist[]>([]);
   const [gistsLoading, setGistsLoading] = useState(false);
@@ -189,10 +82,6 @@ export default function AppMain({ isAuthenticated }: { isAuthenticated: boolean 
   useEffect(() => {
     if (isAuthenticated) loadGists();
   }, [isAuthenticated, loadGists]);
-
-  const handleLogin = () => {
-    router.refresh();
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -271,7 +160,7 @@ export default function AppMain({ isAuthenticated }: { isAuthenticated: boolean 
   };
 
   if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} />;
+    return <LoginScreen error={loginError} />;
   }
 
   const snackbarAction = (
