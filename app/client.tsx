@@ -80,9 +80,9 @@ export default function AppMain({
   const [isError, setIsError] = useState(false);
   const [submitButtonActive, setSubmitButtonActive] = useState(false);
   const [newGistName, setNewGistName] = useState(defaultName);
-  const [displayedXIVPlanUrl, setDisplayedXIVPlanUrl] = useState("");
+  const [displayedXIVPlanUrl, setDisplayedXIVPlanUrl] = useState<URL | null>(null);
   const [recentlyCreatedXIVPlanUrl, setRecentlyCreatedXIVPlanUrl] =
-    useState("");
+    useState<URL | null>(null);
   const [snackbarActive, setSnackbarActive] = useState(false);
 
   const loadGists = useCallback(async () => {
@@ -109,7 +109,7 @@ export default function AppMain({
   };
 
   const handleSubmit = async () => {
-    const planJson = JSON.stringify(parseJSONfromUrl(sharelink));
+    const planJson = JSON.stringify(parseJSONfromUrl(new URL(sharelink)));
 
     let result;
     if (selectedGist === "new") {
@@ -325,7 +325,7 @@ function DisplayXIVPlanUrl({
   url,
   clickHandler,
 }: {
-  url: string;
+  url: URL | null;
   clickHandler: () => void;
 }) {
   const formattedUrl = constructXIVPlanSharelink(url);
@@ -488,40 +488,45 @@ async function copyToClipboard(text: string) {
 }
 
 function validateInput(input: string) {
-  const regex =
-    /^https?:\/\/[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\/#\/plan\/[a-zA-Z0-9_-]*$/;
   if (input === "") return true;
-  if (!regex.test(input)) return false;
+  let url: URL;
   try {
-    parseJSONfromUrl(input);
-  } catch {
+    url = new URL(input);
+  } catch (e) {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  if (!url.hash.startsWith("#/plan/")) return false;
+  try {
+    parseJSONfromUrl(url);
+  } catch (e) {
     return false;
   }
   return true;
 }
 
-function parseJSONfromUrl(url: string) {
-  const searchTarget = "/plan/";
-  const fixedInput = url
-    .replaceAll("-", "+")
-    .replaceAll("_", "/")
-    .substring(url.indexOf(searchTarget) + searchTarget.length);
-  const binData = atob(fixedInput);
-  const charData = binData.split("").map((x) => x.charCodeAt(0));
-  const zlibData = new Uint8Array(charData);
-  const data = inflate(zlibData);
-  // @ts-expect-error Uint16Array → String.fromCharCode variance
-  return JSON.parse(String.fromCharCode.apply(null, new Uint16Array(data)));
+function parseJSONfromUrl(input: URL): JSON {
+  const encoded = input.hash.substring("#/plan/".length);
+  const zlibData = Uint8Array.fromBase64(encoded, { alphabet: "base64url" });
+  const inflated = inflate(zlibData);
+  const decoded = new TextDecoder().decode(inflated);
+  return JSON.parse(decoded);
 }
 
-function parseGistUrl(input: GitHubGist) {
-  const regex = /([^\/]+)\/[^\/]+(\/[^\/]+)$/;
-  const rawUrl = input.files["XIVPlan.json"].raw_url;
-  return rawUrl.replace(regex, "$1$2");
+function parseGistUrl(input: GitHubGist): URL {
+  const url = new URL(input.files["XIVPlan.json"].raw_url);
+  // Raw URL format: /user/gist_id/raw/revision/filename — drop revision for a stable URL
+  const parts = url.pathname.split("/");
+  const rawIdx = parts.indexOf("raw");
+  if (rawIdx !== -1 && rawIdx + 2 < parts.length) {
+    parts.splice(rawIdx + 1, 1);
+  }
+  url.pathname = parts.join("/");
+  return url;
 }
 
-function constructXIVPlanSharelink(url: string) {
+function constructXIVPlanSharelink(url: URL | null) {
   return url
-    ? `https://xivplan.netlify.app/?url=${encodeURIComponent(url)}`
+    ? `https://xivplan.netlify.app/?url=${encodeURIComponent(url.href)}`
     : "";
 }
