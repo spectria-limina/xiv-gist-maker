@@ -210,8 +210,9 @@ export default function AppMain({
       <Paper
         elevation={3}
         sx={{
-          width: { xs: "100vw", sm: "80vw" },
+          width: { xs: "100%", sm: "80vw" },
           minWidth: { xs: "auto", sm: "600px" },
+          maxWidth: "1000px",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
@@ -279,7 +280,7 @@ function SharelinkInput({
     <>
       <Box
         component="form"
-        sx={{ "& .MuiTextField-root": { m: 1, width: "50ch" } }}
+        sx={{ width: "100%", display: "flex", justifyContent: "center" }}
         noValidate
         autoComplete="off"
       >
@@ -293,6 +294,8 @@ function SharelinkInput({
             isError ? "Not an XIVPlan share link or malformed link" : ""
           }
           variant="outlined"
+          fullWidth
+          sx={{ m: 1 }}
           onChange={(e) => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
         />
@@ -326,7 +329,7 @@ function DisplayXIVPlanUrls({
         display: "flex",
         flexDirection: "column",
         gap: 1,
-        width: "60%",
+        width: "100%",
         boxSizing: "border-box",
         pt: 1,
       }}
