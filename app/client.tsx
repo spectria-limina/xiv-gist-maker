@@ -170,14 +170,14 @@ export default function AppMain({
   }) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      handleValidation();
     }
   };
 
-  const handleValidation = () => {
-    const isValid = validateInput(sharelink);
-    setIsError(!isValid);
-    setSubmitButtonActive(sharelink !== "" && isValid);
+  const handleChange = (value: string) => {
+    setSharelink(value);
+    const isValid = validateInput(value);
+    setIsError(value !== "" && !isValid);
+    setSubmitButtonActive(value !== "" && isValid);
   };
 
   if (!isAuthenticated) {
@@ -232,8 +232,7 @@ export default function AppMain({
         <SharelinkInput
           sharelink={sharelink}
           isError={isError}
-          setSharelink={setSharelink}
-          handleValidation={handleValidation}
+          handleChange={handleChange}
           handleKeyDown={handleEnterPress}
           submitButtonActive={submitButtonActive}
           selected={selectedGist}
@@ -269,8 +268,7 @@ export default function AppMain({
 function SharelinkInput({
   sharelink,
   isError,
-  setSharelink,
-  handleValidation,
+  handleChange,
   handleKeyDown,
   submitButtonActive,
   selected,
@@ -278,8 +276,7 @@ function SharelinkInput({
 }: {
   sharelink: string;
   isError: boolean;
-  setSharelink: (v: string) => void;
-  handleValidation: () => void;
+  handleChange: (value: string) => void;
   handleKeyDown: (e: any) => void;
   submitButtonActive: boolean;
   selected: string;
@@ -304,14 +301,14 @@ function SharelinkInput({
               isError ? "Not an XIVPlan share link or malformed link" : ""
             }
             variant="outlined"
-            onChange={(e) => setSharelink(e.target.value)}
-            onBlur={handleValidation}
+            onChange={(e) => handleChange(e.target.value)}
             onKeyDown={handleKeyDown}
           />
         </div>
       </Box>
       <Button
         disabled={!submitButtonActive}
+        suppressHydrationWarning
         variant="contained"
         onClick={clickHandler}
       >
