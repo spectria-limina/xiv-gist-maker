@@ -1,6 +1,7 @@
 'use server';
 
 import { getToken, clearTokenCookie } from './lib/token-cookie';
+import { revokeGitHubToken } from './lib/github-oauth';
 import PostBody, { GitHubGist } from './types';
 
 const GITHUB_API = 'https://api.github.com';
@@ -57,5 +58,7 @@ export async function updateGist(
 }
 
 export async function logout(): Promise<void> {
+  const token = await getToken();
+  if (token) await revokeGitHubToken(token);
   await clearTokenCookie();
 }

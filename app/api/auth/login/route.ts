@@ -4,14 +4,14 @@ import { createGitHubOAuthClient, createAuthorizationURL, getSiteOrigin } from '
 
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: (process.env.NODE_ENV !== 'development'),
   sameSite: 'lax' as const,
   maxAge: 60 * 10,
   path: '/',
 };
 
-export async function GET(request: Request) {
-  const origin = getSiteOrigin(request);
+export async function GET(_request: Request) {
+  const origin = getSiteOrigin();
   const client = createGitHubOAuthClient(`${origin}/api/auth/callback/github`);
   const state = generateState();
   const codeVerifier = generateCodeVerifier();
