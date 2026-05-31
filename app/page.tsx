@@ -1,10 +1,9 @@
 import AppMain from "./client";
-import { fetchUserGists } from "./server";
+import { getToken } from "./lib/token-cookie";
 import Box from '@mui/material/Box';
 
 export default async function Home() {
-  const data = await fetchUserGists();
-  //const data:GitHubGist[] = [];
+  const isAuthenticated = await getToken().then(t => t !== null).catch(() => false);
   return (
     <Box
       sx={{
@@ -12,11 +11,11 @@ export default async function Home() {
         justifyContent: 'start',
         alignItems: 'center',
         width: '100vw',
-        height: '100vh',
-        flexDirection: 'column'
+        minHeight: '100vh',
+        flexDirection: 'column',
       }}
     >
-      <AppMain data={data}/>
+      <AppMain isAuthenticated={isAuthenticated} />
     </Box>
-  )
+  );
 }
