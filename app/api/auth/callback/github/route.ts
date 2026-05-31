@@ -1,10 +1,11 @@
 import { OAuth2RequestError } from 'arctic';
 import { cookies } from 'next/headers';
-import { createGitHubOAuthClient, TOKEN_ENDPOINT } from '@/app/lib/github-oauth';
+import { createGitHubOAuthClient, TOKEN_ENDPOINT, getSiteOrigin } from '@/app/lib/github-oauth';
 import { setTokenCookie } from '@/app/lib/token-cookie';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const origin = getSiteOrigin(request);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
 
@@ -16,10 +17,10 @@ export async function GET(request: Request) {
   jar.delete('oauth_code_verifier');
 
   if (!code || !state || !storedState || !codeVerifier || state !== storedState) {
-    return Response.redirect(new URL('/?error=invalid_state', url.origin));
+    return Response.redirect(new URL('/?error=invalid_state', origin));
   }
 
-  const client = createGitHubOAuthClient(`${url.origin}/api/auth/callback/github`);
+  const client = createGitHubOAuthClient(`${origin}/api/auth/callback/github`);
   try {
     const tokens = await client.validateAuthorizationCode(TOKEN_ENDPOINT, code, codeVerifier);
     await setTokenCookie(tokens.accessToken());
@@ -33,6 +34,6 @@ export async function GET(request: Request) {
     );
   } catch (e) {
     const errorCode = e instanceof OAuth2RequestError ? e.code : 'server_error';
-    return Response.redirect(new URL(`/?error=${encodeURIComponent(errorCode)}`, url.origin));
+    return Response.redirect(new URL(`/?error=${encodeURIComponent(errorCode)}`, origin));
   }
 }

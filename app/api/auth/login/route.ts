@@ -1,6 +1,6 @@
 import { generateState, generateCodeVerifier } from 'arctic';
 import { cookies } from 'next/headers';
-import { createGitHubOAuthClient, createAuthorizationURL } from '@/app/lib/github-oauth';
+import { createGitHubOAuthClient, createAuthorizationURL, getSiteOrigin } from '@/app/lib/github-oauth';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -11,7 +11,7 @@ const COOKIE_OPTS = {
 };
 
 export async function GET(request: Request) {
-  const origin = new URL(request.url).origin;
+  const origin = getSiteOrigin(request);
   const client = createGitHubOAuthClient(`${origin}/api/auth/callback/github`);
   const state = generateState();
   const codeVerifier = generateCodeVerifier();

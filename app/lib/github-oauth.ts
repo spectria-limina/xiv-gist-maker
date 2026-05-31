@@ -2,6 +2,11 @@ import { OAuth2Client, CodeChallengeMethod } from 'arctic';
 
 export { CodeChallengeMethod };
 
+export function getSiteOrigin(request: Request): string {
+  if (process.env.SITE_DOMAIN) return `https://${process.env.SITE_DOMAIN}`;
+  return new URL(request.url).origin;
+}
+
 const AUTHORIZATION_ENDPOINT = 'https://github.com/login/oauth/authorize';
 export const TOKEN_ENDPOINT = 'https://github.com/login/oauth/access_token';
 
