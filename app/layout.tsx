@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Roboto } from 'next/font/google';
-import ThemeRegistry from "./ThemeRegistry";
+import { Roboto } from "next/font/google";
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 
 const roboto = Roboto({
-  weight: '400',
-  subsets: ['latin'],
-})
+  weight: "400",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: "XIVPlan Sharelink Creator",
-  description: "Handcrafted by a shitty programmer",
+  title: "XIVGistPlan Sharelink Creator",
+  description:
+    "Handcrafted by a shitty programmer (and vibe-coded to hell and back by a shittier one)",
 };
 
 export default function RootLayout({
@@ -19,12 +20,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${roboto.className} h-full antialiased`}
-    >
+    <html lang="en" className={`${roboto.className} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <ThemeRegistry>{children}</ThemeRegistry>
+        <AppRouterCacheProvider>{children}</AppRouterCacheProvider>
       </body>
     </html>
   );

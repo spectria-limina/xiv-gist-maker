@@ -1,22 +1,28 @@
-'use client';
-import { Dispatch, SetStateAction, useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { inflate } from 'pako';
-import { GitHubGist } from './types';
-import { fetchUserGists, createGist, updateGist, logout } from './server';
-import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import Card from '@mui/material/Card';
-import Paper from '@mui/material/Paper';
-import Snackbar, { SnackbarCloseReason } from '@mui/material/Snackbar';
-import IconButton from '@mui/material/IconButton';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CloseIcon from '@mui/icons-material/Close';
-import CircularProgress from '@mui/material/CircularProgress';
-import GitHubIcon from '@mui/icons-material/GitHub';
-import LogoutIcon from '@mui/icons-material/Logout';
+"use client";
+import {
+  Dispatch,
+  SetStateAction,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import { useRouter } from "next/navigation";
+import { inflate } from "pako";
+import { GitHubGist } from "./types";
+import { fetchUserGists, createGist, updateGist, logout } from "./server";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import Card from "@mui/material/Card";
+import Paper from "@mui/material/Paper";
+import Snackbar, { SnackbarCloseReason } from "@mui/material/Snackbar";
+import IconButton from "@mui/material/IconButton";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import CloseIcon from "@mui/icons-material/Close";
+import CircularProgress from "@mui/material/CircularProgress";
+import GitHubIcon from "@mui/icons-material/GitHub";
+import LogoutIcon from "@mui/icons-material/Logout";
 
 /* ---- Login component ---- */
 
@@ -24,45 +30,59 @@ function LoginScreen({ error }: { error?: string }) {
   return (
     <Box
       sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         gap: 3,
         padding: 4,
-        minHeight: '60vh',
+        minHeight: "60vh",
       }}
     >
       <Typography variant="h4">XIVPlan Sharelink Creator</Typography>
       <Typography variant="body1" color="text.secondary">
         Sign in with GitHub to manage your gists.
       </Typography>
-      <Button variant="contained" size="large" startIcon={<GitHubIcon />} href="/api/auth/login">
+      <Button
+        variant="contained"
+        size="large"
+        startIcon={<GitHubIcon />}
+        href="/api/auth/login"
+      >
         Sign in with GitHub
       </Button>
       {error && (
-        <Typography color="error" variant="body2">Sign-in failed: {error}</Typography>
+        <Typography color="error" variant="body2">
+          Sign-in failed: {error}
+        </Typography>
       )}
     </Box>
   );
 }
 
-const defaultName = 'Kefka Phase N';
+const defaultName = "Kefka Phase N";
 
 /* ---- Main app ---- */
 
-export default function AppMain({ isAuthenticated, loginError }: { isAuthenticated: boolean; loginError?: string }) {
+export default function AppMain({
+  isAuthenticated,
+  loginError,
+}: {
+  isAuthenticated: boolean;
+  loginError?: string;
+}) {
   const router = useRouter();
   const [gists, setGists] = useState<GitHubGist[]>([]);
   const [gistsLoading, setGistsLoading] = useState(false);
   const [gistsError, setGistsError] = useState<string | null>(null);
-  const [selectedGist, setSelectedGist] = useState<string>('new');
-  const [sharelink, setSharelink] = useState('');
+  const [selectedGist, setSelectedGist] = useState<string>("new");
+  const [sharelink, setSharelink] = useState("");
   const [isError, setIsError] = useState(false);
   const [submitButtonActive, setSubmitButtonActive] = useState(false);
   const [newGistName, setNewGistName] = useState(defaultName);
-  const [displayedXIVPlanUrl, setDisplayedXIVPlanUrl] = useState('');
-  const [recentlyCreatedXIVPlanUrl, setRecentlyCreatedXIVPlanUrl] = useState('');
+  const [displayedXIVPlanUrl, setDisplayedXIVPlanUrl] = useState("");
+  const [recentlyCreatedXIVPlanUrl, setRecentlyCreatedXIVPlanUrl] =
+    useState("");
   const [snackbarActive, setSnackbarActive] = useState(false);
 
   const loadGists = useCallback(async () => {
@@ -72,7 +92,7 @@ export default function AppMain({ isAuthenticated, loginError }: { isAuthenticat
       const data = await fetchUserGists();
       setGists(data);
     } catch {
-      setGistsError('Failed to load gists. Your session may have expired.');
+      setGistsError("Failed to load gists. Your session may have expired.");
       router.refresh();
     } finally {
       setGistsLoading(false);
@@ -90,47 +110,42 @@ export default function AppMain({ isAuthenticated, loginError }: { isAuthenticat
 
   const handleSubmit = async () => {
     const planJson = JSON.stringify(parseJSONfromUrl(sharelink));
-    if (selectedGist === 'new') {
-      const result = await createGist(newGistName, planJson);
-      if (result.success && result.data) {
-        const newUrl = parseGistUrl(result.data);
-        setDisplayedXIVPlanUrl(newUrl);
-        setRecentlyCreatedXIVPlanUrl(newUrl);
-        copyToClipboard(constructXIVPlanSharelink(newUrl));
-        setSnackbarActive(true);
-        setSharelink('');
-        loadGists();
-      } else {
-        setIsError(true);
-        setSharelink('');
-      }
+
+    let result;
+    if (selectedGist === "new") {
+      result = await createGist(newGistName, planJson);
     } else {
       const selectedObj = gists.find((g: GitHubGist) => g.id === selectedGist);
       if (!selectedObj?.description) return;
-      const result = await updateGist(selectedGist, selectedObj.description, planJson);
-      if (result.success && result.data) {
-        const newUrl = parseGistUrl(result.data);
-        setDisplayedXIVPlanUrl(newUrl);
-        setRecentlyCreatedXIVPlanUrl(newUrl);
-        copyToClipboard(constructXIVPlanSharelink(newUrl));
-        setSnackbarActive(true);
-        setSharelink('');
-        loadGists();
-      } else {
-        setIsError(true);
-        setSharelink('');
-      }
+      result = await updateGist(
+        selectedGist,
+        selectedObj.description,
+        planJson,
+      );
+    }
+
+    if (result.success && result.data) {
+      const newUrl = parseGistUrl(result.data);
+      setDisplayedXIVPlanUrl(newUrl);
+      setRecentlyCreatedXIVPlanUrl(newUrl);
+      copyToClipboard(constructXIVPlanSharelink(newUrl));
+      setSnackbarActive(true);
+      setSharelink("");
+      loadGists();
+    } else {
+      setIsError(true);
+      setSharelink("");
     }
   };
 
   const handleCardClick = (event: React.MouseEvent, id: string) => {
     if (event.detail > 0) {
       setSelectedGist(id);
-      if (id === 'new') {
+      if (id === "new") {
         setDisplayedXIVPlanUrl(recentlyCreatedXIVPlanUrl);
       } else {
         const gist = gists.find((g: GitHubGist) => g.id === id);
-        if (gist && 'XIVPlan.json' in gist.files) {
+        if (gist && "XIVPlan.json" in gist.files) {
           setDisplayedXIVPlanUrl(parseGistUrl(gist));
         }
       }
@@ -142,12 +157,18 @@ export default function AppMain({ isAuthenticated, loginError }: { isAuthenticat
     setSnackbarActive(true);
   };
 
-  const handleSnackbarClose = (_event: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
-    if (reason !== 'clickaway') setSnackbarActive(false);
+  const handleSnackbarClose = (
+    _event: React.SyntheticEvent | Event,
+    reason?: SnackbarCloseReason,
+  ) => {
+    if (reason !== "clickaway") setSnackbarActive(false);
   };
 
-  const handleEnterPress = (event: { key: string; preventDefault: () => void }) => {
-    if (event.key === 'Enter') {
+  const handleEnterPress = (event: {
+    key: string;
+    preventDefault: () => void;
+  }) => {
+    if (event.key === "Enter") {
       event.preventDefault();
       handleValidation();
     }
@@ -156,7 +177,7 @@ export default function AppMain({ isAuthenticated, loginError }: { isAuthenticat
   const handleValidation = () => {
     const isValid = validateInput(sharelink);
     setIsError(!isValid);
-    setSubmitButtonActive(sharelink !== '' && isValid);
+    setSubmitButtonActive(sharelink !== "" && isValid);
   };
 
   if (!isAuthenticated) {
@@ -164,7 +185,12 @@ export default function AppMain({ isAuthenticated, loginError }: { isAuthenticat
   }
 
   const snackbarAction = (
-    <IconButton size="small" aria-label="close" color="inherit" onClick={handleSnackbarClose}>
+    <IconButton
+      size="small"
+      aria-label="close"
+      color="inherit"
+      onClick={handleSnackbarClose}
+    >
       <CloseIcon fontSize="small" />
     </IconButton>
   );
@@ -178,7 +204,7 @@ export default function AppMain({ isAuthenticated, loginError }: { isAuthenticat
         message="XIVPlan URL saved!"
         action={snackbarAction}
       />
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', padding: 1 }}>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", padding: 1 }}>
         <Button
           size="small"
           startIcon={<LogoutIcon />}
@@ -191,16 +217,16 @@ export default function AppMain({ isAuthenticated, loginError }: { isAuthenticat
       <Paper
         elevation={3}
         sx={{
-          width: { xs: '100vw', sm: '80vw' },
-          minWidth: { xs: 'auto', sm: '600px' },
-          height: { xs: '20vh', sm: '20vh' },
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
+          width: { xs: "100vw", sm: "80vw" },
+          minWidth: { xs: "auto", sm: "600px" },
+          height: { xs: "20vh", sm: "20vh" },
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
           padding: 4,
-          margin: '0 auto 16px',
-          boxSizing: 'border-box',
+          margin: "0 auto 16px",
+          boxSizing: "border-box",
         }}
       >
         <SharelinkInput
@@ -213,13 +239,18 @@ export default function AppMain({ isAuthenticated, loginError }: { isAuthenticat
           selected={selectedGist}
           clickHandler={handleSubmit}
         />
-        <DisplayXIVPlanUrl url={displayedXIVPlanUrl} clickHandler={handleCopyClick} />
+        <DisplayXIVPlanUrl
+          url={displayedXIVPlanUrl}
+          clickHandler={handleCopyClick}
+        />
       </Paper>
       {gistsError && (
-        <Typography color="error" sx={{ textAlign: 'center', mb: 2 }}>{gistsError}</Typography>
+        <Typography color="error" sx={{ textAlign: "center", mb: 2 }}>
+          {gistsError}
+        </Typography>
       )}
       {gistsLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', padding: 4 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", padding: 4 }}>
           <CircularProgress />
         </Box>
       ) : (
@@ -235,13 +266,30 @@ export default function AppMain({ isAuthenticated, loginError }: { isAuthenticat
   );
 }
 
-function SharelinkInput({ sharelink, isError, setSharelink, handleValidation, handleKeyDown, submitButtonActive, selected, clickHandler }:
-  { sharelink: string; isError: boolean; setSharelink: (v: string) => void; handleValidation: () => void; handleKeyDown: (e: any) => void; submitButtonActive: boolean; selected: string; clickHandler: () => Promise<void> }) {
+function SharelinkInput({
+  sharelink,
+  isError,
+  setSharelink,
+  handleValidation,
+  handleKeyDown,
+  submitButtonActive,
+  selected,
+  clickHandler,
+}: {
+  sharelink: string;
+  isError: boolean;
+  setSharelink: (v: string) => void;
+  handleValidation: () => void;
+  handleKeyDown: (e: any) => void;
+  submitButtonActive: boolean;
+  selected: string;
+  clickHandler: () => Promise<void>;
+}) {
   return (
     <>
       <Box
         component="form"
-        sx={{ '& .MuiTextField-root': { m: 1, width: '50ch' } }}
+        sx={{ "& .MuiTextField-root": { m: 1, width: "50ch" } }}
         noValidate
         autoComplete="off"
       >
@@ -252,36 +300,48 @@ function SharelinkInput({ sharelink, isError, setSharelink, handleValidation, ha
             error={isError}
             id="xivplan-input-textarea"
             placeholder="Paste link here"
-            helperText={isError ? 'Not an XIVPlan share link or malformed link' : ''}
+            helperText={
+              isError ? "Not an XIVPlan share link or malformed link" : ""
+            }
             variant="outlined"
-            onChange={e => setSharelink(e.target.value)}
+            onChange={(e) => setSharelink(e.target.value)}
             onBlur={handleValidation}
             onKeyDown={handleKeyDown}
           />
         </div>
       </Box>
-      <Button disabled={!submitButtonActive} variant="contained" onClick={clickHandler}>
-        {selected === 'new' ? 'Create New' : 'Update Gist'}
+      <Button
+        disabled={!submitButtonActive}
+        variant="contained"
+        onClick={clickHandler}
+      >
+        {selected === "new" ? "Create New" : "Update Gist"}
       </Button>
     </>
   );
 }
 
-function DisplayXIVPlanUrl({ url, clickHandler }: { url: string; clickHandler: () => void }) {
+function DisplayXIVPlanUrl({
+  url,
+  clickHandler,
+}: {
+  url: string;
+  clickHandler: () => void;
+}) {
   const formattedUrl = constructXIVPlanSharelink(url);
   return (
     <Box
       sx={{
-        display: 'flex',
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        boxSizing: 'border-box',
+        display: "flex",
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        boxSizing: "border-box",
         padding: 1,
       }}
     >
       <TextField
-        sx={{ width: '45ch' }}
+        sx={{ width: "45ch" }}
         aria-readonly
         id="XIVPlan-formatted-url"
         placeholder="Formatted XIVPlan Link"
@@ -295,9 +355,41 @@ function DisplayXIVPlanUrl({ url, clickHandler }: { url: string; clickHandler: (
   );
 }
 
-function DisplayGists({ data, selected, handleCardClick, newGistName, setNewGistName }:
-  { data: GitHubGist[]; selected: string | null; handleCardClick: (event: any, id: any) => void; newGistName: string; setNewGistName: Dispatch<SetStateAction<string>> }) {
-  const handleUpdate = (event: { target: { value: SetStateAction<string> } }) => {
+function cardSx(isSelected: boolean) {
+  return {
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "start",
+    alignItems: "start",
+    width: "200px",
+    height: "220px",
+    padding: 2,
+    margin: 1,
+    overflow: "hidden",
+    border: isSelected ? "2px solid #1976d2" : "2px solid transparent",
+    backgroundColor: isSelected ? "#e3f2fd" : "background.paper",
+    boxShadow: isSelected ? 6 : 1,
+    transform: isSelected ? "scale(1.02)" : "none",
+    "&:focus": { outline: "none" },
+  };
+}
+
+function DisplayGists({
+  data,
+  selected,
+  handleCardClick,
+  newGistName,
+  setNewGistName,
+}: {
+  data: GitHubGist[];
+  selected: string | null;
+  handleCardClick: (event: any, id: any) => void;
+  newGistName: string;
+  setNewGistName: Dispatch<SetStateAction<string>>;
+}) {
+  const handleUpdate = (event: {
+    target: { value: SetStateAction<string> };
+  }) => {
     setNewGistName(event.target.value);
   };
   const handleResetToDefault = () => setNewGistName(defaultName);
@@ -305,35 +397,22 @@ function DisplayGists({ data, selected, handleCardClick, newGistName, setNewGist
   return (
     <div
       style={{
-        width: '100vw',
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        alignItems: 'center',
+        width: "100vw",
+        display: "flex",
+        flexDirection: "row",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        alignItems: "center",
       }}
     >
       <Card
         key="newGistCreationCard"
-        onClick={e => handleCardClick(e, 'new')}
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'start',
-          alignItems: 'start',
-          width: '200px',
-          height: '220px',
-          padding: 2,
-          margin: 1,
-          overflow: 'hidden',
-          border: selected === 'new' ? '2px solid #1976d2' : '2px solid transparent',
-          backgroundColor: selected === 'new' ? '#e3f2fd' : 'background.paper',
-          boxShadow: selected === 'new' ? 6 : 1,
-          transform: selected === 'new' ? 'scale(1.02)' : 'none',
-          '&:focus': { outline: 'none' },
-        }}
+        onClick={(e) => handleCardClick(e, "new")}
+        sx={cardSx(selected === "new")}
       >
-        <Typography variant="h6" gutterBottom>Create New Gist</Typography>
+        <Typography variant="h6" gutterBottom>
+          Create New Gist
+        </Typography>
         <TextField
           required
           id="new-gist-name"
@@ -343,42 +422,55 @@ function DisplayGists({ data, selected, handleCardClick, newGistName, setNewGist
           value={newGistName}
           onChange={handleUpdate}
         />
-        <Button sx={{ margin: 'auto', padding: 1, size: 'small' }} onClick={handleResetToDefault}>
+        <Button
+          sx={{ margin: "auto", padding: 1, size: "small" }}
+          onClick={handleResetToDefault}
+        >
           Default Name
         </Button>
       </Card>
-      {data.map(jsonData => {
+      {data.map((jsonData) => {
         const isSelected = jsonData.id === selected;
         return (
           <Card
             key={jsonData.url}
-            onClick={e => handleCardClick(e, jsonData.id)}
-            sx={{
-              justifyContent: 'start',
-              alignItems: 'start',
-              width: '200px',
-              height: '220px',
-              padding: 2,
-              margin: 1,
-              overflow: 'hidden',
-              border: isSelected ? '2px solid #1976d2' : '2px solid transparent',
-              backgroundColor: isSelected ? '#e3f2fd' : 'background.paper',
-              boxShadow: isSelected ? 6 : 1,
-              transform: isSelected ? 'scale(1.02)' : 'none',
-              '&:focus': { outline: 'none' },
-            }}
+            onClick={(e) => handleCardClick(e, jsonData.id)}
+            sx={cardSx(isSelected)}
           >
-            <Typography variant="h6" gutterBottom>{jsonData.description}</Typography>
+            <Typography variant="h6" gutterBottom>
+              {jsonData.description}
+            </Typography>
             <Typography variant="body2" gutterBottom>
               <strong>Created On: </strong>
-              {new Date(jsonData.created_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {new Date(jsonData.created_at).toLocaleString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </Typography>
             <Typography variant="body2" gutterBottom>
               <strong>Last Updated: </strong>
-              {new Date(jsonData.updated_at).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {new Date(jsonData.updated_at).toLocaleString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </Typography>
-            <Typography variant="caption" style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-              <a href={jsonData.html_url} target="_blank">Click to view Gist online</a>
+            <Typography
+              variant="caption"
+              style={{
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+                textOverflow: "ellipsis",
+              }}
+            >
+              <a href={jsonData.html_url} target="_blank">
+                Click to view Gist online
+              </a>
             </Typography>
           </Card>
         );
@@ -391,13 +483,14 @@ async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
   } catch (err) {
-    console.error('Failed to copy text: ', err);
+    console.error("Failed to copy text: ", err);
   }
 }
 
 function validateInput(input: string) {
-  const regex = /^https?:\/\/[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\/#\/plan\/[a-zA-Z0-9_-]*$/;
-  if (input === '') return true;
+  const regex =
+    /^https?:\/\/[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\/#\/plan\/[a-zA-Z0-9_-]*$/;
+  if (input === "") return true;
   if (!regex.test(input)) return false;
   try {
     parseJSONfromUrl(input);
@@ -408,12 +501,13 @@ function validateInput(input: string) {
 }
 
 function parseJSONfromUrl(url: string) {
-  const searchTarget = '/plan/';
-  const fixedInput = url.replaceAll('-', '+')
-    .replaceAll('_', '/')
+  const searchTarget = "/plan/";
+  const fixedInput = url
+    .replaceAll("-", "+")
+    .replaceAll("_", "/")
     .substring(url.indexOf(searchTarget) + searchTarget.length);
   const binData = atob(fixedInput);
-  const charData = binData.split('').map(x => x.charCodeAt(0));
+  const charData = binData.split("").map((x) => x.charCodeAt(0));
   const zlibData = new Uint8Array(charData);
   const data = inflate(zlibData);
   // @ts-expect-error Uint16Array → String.fromCharCode variance
@@ -422,10 +516,12 @@ function parseJSONfromUrl(url: string) {
 
 function parseGistUrl(input: GitHubGist) {
   const regex = /([^\/]+)\/[^\/]+(\/[^\/]+)$/;
-  const rawUrl = input.files['XIVPlan.json'].raw_url;
-  return rawUrl.replace(regex, '$1$2');
+  const rawUrl = input.files["XIVPlan.json"].raw_url;
+  return rawUrl.replace(regex, "$1$2");
 }
 
 function constructXIVPlanSharelink(url: string) {
-  return url ? `https://xivplan.netlify.app/?url=${encodeURIComponent(url)}` : '';
+  return url
+    ? `https://xivplan.netlify.app/?url=${encodeURIComponent(url)}`
+    : "";
 }

@@ -2,7 +2,10 @@ import { OAuth2Client, CodeChallengeMethod } from "arctic";
 
 export { CodeChallengeMethod };
 
-const GITHUB_API_VERSION = "2026-03-10";
+export const GITHUB_API = "https://api.github.com";
+export const GITHUB_API_VERSION = "2026-03-10";
+const AUTHORIZATION_ENDPOINT = "https://github.com/login/oauth/authorize";
+export const TOKEN_ENDPOINT = "https://github.com/login/oauth/access_token";
 
 export interface TokenData {
   accessToken: string;
@@ -12,53 +15,32 @@ export interface TokenData {
 
 export function getSiteOrigin(): string {
   if (!process.env.SITE_DOMAIN) throw new Error("SITE_DOMAIN must be set");
-  const scheme =
-    process.env.SITE_DOMAIN.startsWith("localhost") ? "http" : "https";
+  const scheme = process.env.SITE_DOMAIN.startsWith("localhost")
+    ? "http"
+    : "https";
   return `${scheme}://${process.env.SITE_DOMAIN}`;
 }
 
-export async function revokeGitHubToken(token: string): Promise<void> {
-  if (!process.env.GITHUB_CLIENT_ID)
-    throw new Error("GITHUB_CLIENT_ID must be set");
-  if (!process.env.GITHUB_CLIENT_SECRET)
-    throw new Error("GITHUB_CLIENT_SECRET must be set");
-  const clientId = process.env.GITHUB_CLIENT_ID;
-  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-  const auth = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
-
-  if (!clientId || !clientSecret) return;
-  await fetch(tokenRevocationEndpoint(), {
-    method: "DELETE",
-    headers: {
-      Authorization: auth,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": GITHUB_API_VERSION,
-    },
-    body: JSON.stringify({ access_token: token }),
-  });
+export function getCallbackURL(): string {
+  return `${getSiteOrigin()}/api/auth/callback/github`;
 }
 
-export async function refreshGitHubToken(refreshToken: string): Promise<TokenData> {
-  const origin = getSiteOrigin();
-  const client = createGitHubOAuthClient(`${origin}/api/auth/callback/github`);
-  const tokens = await client.refreshAccessToken(TOKEN_ENDPOINT, refreshToken, ["gist"]);
+type ArcticTokens = Awaited<
+  ReturnType<OAuth2Client["validateAuthorizationCode"]>
+>;
+
+export function tokenDataFromResponse(tokens: ArcticTokens): TokenData {
   let expiresAt: number | undefined;
-  try { expiresAt = tokens.accessTokenExpiresAt().getTime(); } catch { /* no expiry in response */ }
+  try {
+    expiresAt = tokens.accessTokenExpiresAt().getTime();
+  } catch {
+    /* no expiry in response */
+  }
   return {
     accessToken: tokens.accessToken(),
     refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : undefined,
     expiresAt,
   };
-}
-
-const AUTHORIZATION_ENDPOINT = "https://github.com/login/oauth/authorize";
-export const TOKEN_ENDPOINT = "https://github.com/login/oauth/access_token";
-
-function tokenRevocationEndpoint(): string {
-  const clientId = process.env.GITHUB_CLIENT_ID;
-  if (!process.env.GITHUB_CLIENT_ID)
-    throw new Error("GITHUB_CLIENT_ID must be set");
-  return `https://api.github.com/applications/${clientId}/token`;
 }
 
 export function createGitHubOAuthClient(redirectURI: string): OAuth2Client {
@@ -82,4 +64,31 @@ export function createAuthorizationURL(
     codeVerifier,
     ["gist"],
   );
+}
+
+export async function revokeGitHubToken(token: string): Promise<void> {
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+  if (!clientId) throw new Error("GITHUB_CLIENT_ID must be set");
+  if (!clientSecret) throw new Error("GITHUB_CLIENT_SECRET must be set");
+  const auth = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+  await fetch(`${GITHUB_API}/applications/${clientId}/token`, {
+    method: "DELETE",
+    headers: {
+      Authorization: auth,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": GITHUB_API_VERSION,
+    },
+    body: JSON.stringify({ access_token: token }),
+  });
+}
+
+export async function refreshGitHubToken(
+  refreshToken: string,
+): Promise<TokenData> {
+  const client = createGitHubOAuthClient(getCallbackURL());
+  const tokens = await client.refreshAccessToken(TOKEN_ENDPOINT, refreshToken, [
+    "gist",
+  ]);
+  return tokenDataFromResponse(tokens);
 }

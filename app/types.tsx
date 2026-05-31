@@ -1,41 +1,3 @@
-export interface PostContentFileContent {
-    'content': string;
-}
-
-export interface PostContentFile {
-    'XIVPlan.json': PostContentFileContent;
-}
-
-export interface PostContent {
-    'files': PostContentFile,
-    'description': string,
-    'public': boolean,
-}
-
-export class PostBodyFileContent implements PostContentFileContent {
-    'content';
-    constructor(content:string) {
-        this['content'] = content;
-    }
-}
-
-export class PostBodyFile implements PostContentFile {
-    'XIVPlan.json';
-    constructor(content:string) {
-        this['XIVPlan.json'] = new PostBodyFileContent(content);
-    }
-}
-
-export default class PostBody implements PostContent {
-    'files';
-    'description';
-    'public' = true;
-    constructor(description: string, content:string) {
-        this['description'] = description;
-        this['files'] = new PostBodyFile(content);
-    }
-}
-
 export interface GistFile {
   filename: string;
   type: string;
@@ -77,7 +39,6 @@ export interface GitHubGist {
   files: {
     [filename: string]: GistFile;
   };
-  
   public: boolean;
   created_at: string;
   updated_at: string;
@@ -87,4 +48,12 @@ export interface GitHubGist {
   comments_url: string;
   owner: GistOwner;
   truncated: boolean;
+}
+
+export function buildPostBody(description: string, content: string) {
+  return {
+    description,
+    public: true,
+    files: { "XIVPlan.json": { content } },
+  };
 }
